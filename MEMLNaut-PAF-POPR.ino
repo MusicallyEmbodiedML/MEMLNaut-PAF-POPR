@@ -1,6 +1,7 @@
-// #include "src/memllib/interface/InterfaceBase.hpp"
+#include "src/memllib/hardware/memlnaut/display/DisplayDriver.hpp"
+#include "src/memllib/hardware/memlnaut/display/TextView.hpp"
 #include "src/memllib/interface/MIDIInOut.hpp"
-#include "display.hpp"
+// #include "src/memllib/hardware/memlnaut/display.hpp"
 #include "src/memllib/audio/AudioAppBase.hpp"
 #include "src/memllib/audio/AudioDriver.hpp"
 #include "src/memllib/hardware/memlnaut/MEMLNaut.hpp"
@@ -8,6 +9,7 @@
 #include "hardware/structs/bus_ctrl.h"
 #include "PAFSynthAudioApp.hpp"
 #include "src/memllib/examples/IMLInterface.hpp"
+
 
 
 #define APP_SRAM __not_in_flash("app")
@@ -32,12 +34,15 @@ uint32_t get_rosc_entropy_seed(int bits) {
 
 // Global objects
 std::shared_ptr<IMLInterface> APP_SRAM interface;
-std::shared_ptr<display> APP_SRAM scr;
+// std::shared_ptr<display> APP_SRAM scr;
 
 std::shared_ptr<MIDIInOut> APP_SRAM midi_interf;
 
 
 std::shared_ptr<PAFSynthAudioApp> __scratch_y("audio") audio_app;
+
+std::shared_ptr<DisplayDriver> APP_SRAM disp;
+
 
 // Inter-core communication
 volatile bool APP_SRAM core_0_ready = false;
@@ -58,14 +63,24 @@ constexpr size_t kN_InputParams = 3;
 
 struct repeating_timer APP_SRAM timerDisplay;
 inline bool __not_in_flash_func(displayUpdate)(__unused struct repeating_timer *t) {
-    scr->update();
+    // scr->update();
+    disp->Draw();
+    return true;
+}
+
+struct repeating_timer APP_SRAM timerTouch;
+inline bool __not_in_flash_func(touchUpdate)(__unused struct repeating_timer *t) {
+    // scr->update();
+    disp->PollTouch();
     return true;
 }
 
 void setup()
 {
-    scr = std::make_shared<display>();
-    scr->setup();
+    set_sys_clock_khz(AudioDriver::GetSysClockSpeed(), true);
+
+    // scr = std::make_shared<display>();
+    // scr->setup();
     bus_ctrl_hw->priority = BUSCTRL_BUS_PRIORITY_DMA_W_BITS |
         BUSCTRL_BUS_PRIORITY_DMA_R_BITS | BUSCTRL_BUS_PRIORITY_PROC1_BITS;
 
@@ -73,7 +88,7 @@ void setup()
     srand(seed);
 
     Serial.begin(115200);
-    // while (!Serial) {}
+    while (!Serial) {}
     Serial.println("Serial initialised.");
     WRITE_VOLATILE(serial_ready, true);
 
@@ -81,11 +96,14 @@ void setup()
     MEMLNaut::Initialize();
     pinMode(33, OUTPUT);
 
+    
+
     auto temp_interface = std::make_shared<IMLInterface>();
-    temp_interface->setup(kN_InputParams, PAFSynthAudioApp::kN_Params, scr);
+    temp_interface->setup(kN_InputParams, PAFSynthAudioApp::kN_Params);
     MEMORY_BARRIER();
     interface = temp_interface;
     MEMORY_BARRIER();
+    
 
     // Setup interface with memory barrier protection
     WRITE_VOLATILE(interface_ready, true);
@@ -93,7 +111,18 @@ void setup()
     interface->bindInterface();
     Serial.println("Bound RL interface to MEMLNaut.");
 
-    midi_interf = std::make_shared<MIDIInOut>();
+    // // Create test views - now using string literals
+    auto view1 = std::make_shared<TextView>("View 1", "Hello World!", TFT_RED);
+    auto view2 = std::make_shared<TextView>("View 2", "Touch Me!", TFT_GREEN);
+    auto view3 = std::make_shared<TextView>("View 3", "Last View", TFT_BLUE);
+    disp = std::make_shared<DisplayDriver>();
+    // // Add views to display
+    disp->AddView(view1);
+    disp->AddView(view2);
+    disp->AddView(view3);
+    disp->Setup();
+
+    // midi_interf = std::make_shared<MIDIInOut>();
     midi_interf->Setup(0);
     midi_interf->SetMIDISendChannel(1);
     Serial.println("MIDI setup complete.");
@@ -116,8 +145,9 @@ void setup()
         delay(1);
     }
 
-    scr->post(FIRMWARE_NAME);
-    add_repeating_timer_ms(-39, displayUpdate, NULL, &timerDisplay);
+    // scr->post(FIRMWARE_NAME);
+    add_repeating_timer_ms(39, displayUpdate, NULL, &timerDisplay);
+    add_repeating_timer_ms(10, touchUpdate, NULL, &timerTouch);
 
     Serial.println("Finished initialising core 0.");
 }

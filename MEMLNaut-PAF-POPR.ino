@@ -1,5 +1,6 @@
-#include "src/memllib/hardware/memlnaut/display/DisplayDriver.hpp"
-#include "src/memllib/hardware/memlnaut/display/TextView.hpp"
+// #include "src/memllib/hardware/memlnaut/display/DisplayDriver.hpp"
+// #include "src/memllib/hardware/memlnaut/display/TextView.hpp"
+// #include "src/memllib/hardware/memlnaut/display/MessageView.hpp"
 #include "src/memllib/interface/MIDIInOut.hpp"
 // #include "src/memllib/hardware/memlnaut/display.hpp"
 #include "src/memllib/audio/AudioAppBase.hpp"
@@ -41,7 +42,7 @@ std::shared_ptr<MIDIInOut> APP_SRAM midi_interf;
 
 std::shared_ptr<PAFSynthAudioApp> __scratch_y("audio") audio_app;
 
-std::shared_ptr<DisplayDriver> APP_SRAM disp;
+// std::shared_ptr<DisplayDriver> APP_SRAM disp;
 
 
 // Inter-core communication
@@ -61,19 +62,18 @@ constexpr size_t kN_InputParams = 3;
 #define READ_VOLATILE(var) ({ MEMORY_BARRIER(); typeof(var) __temp = (var); MEMORY_BARRIER(); __temp; })
 
 
-struct repeating_timer APP_SRAM timerDisplay;
-inline bool __not_in_flash_func(displayUpdate)(__unused struct repeating_timer *t) {
-    // scr->update();
-    disp->Draw();
-    return true;
-}
+// struct repeating_timer APP_SRAM timerDisplay;
+// inline bool __not_in_flash_func(displayUpdate)(__unused struct repeating_timer *t) {
+//     disp->Draw();
+//     return true;
+// }
 
-struct repeating_timer APP_SRAM timerTouch;
-inline bool __not_in_flash_func(touchUpdate)(__unused struct repeating_timer *t) {
-    // scr->update();
-    disp->PollTouch();
-    return true;
-}
+// struct repeating_timer APP_SRAM timerTouch;
+// inline bool __not_in_flash_func(touchUpdate)(__unused struct repeating_timer *t) {
+//     // scr->update();
+//     disp->PollTouch();
+//     return true;
+// }
 
 void setup()
 {
@@ -112,15 +112,18 @@ void setup()
     Serial.println("Bound RL interface to MEMLNaut.");
 
     // // Create test views - now using string literals
-    auto view1 = std::make_shared<TextView>("View 1", "Hello World!", TFT_RED);
-    auto view2 = std::make_shared<TextView>("View 2", "Touch Me!", TFT_GREEN);
-    auto view3 = std::make_shared<TextView>("View 3", "Last View", TFT_BLUE);
-    disp = std::make_shared<DisplayDriver>();
+    // auto view1 = std::make_shared<TextView>("View 1", "Hello World!", TFT_RED);
+    // auto view2 = std::make_shared<TextView>("View 2", "Touch Me!", TFT_GREEN);
+    // auto view3 = std::make_shared<TextView>("View 3", "Last View", TFT_BLUE);
+    // auto msgView = std::make_shared<MessageView>("PAF Synth");
+    
+    // disp = std::make_shared<DisplayDriver>();
     // // Add views to display
-    disp->AddView(view1);
-    disp->AddView(view2);
-    disp->AddView(view3);
-    disp->Setup();
+    // disp->AddView(view1);
+    // disp->AddView(view2);
+    // disp->AddView(view3);
+    // disp->AddView(msgView);
+    // disp->Setup();
 
     // midi_interf = std::make_shared<MIDIInOut>();
     midi_interf->Setup(0);
@@ -146,8 +149,8 @@ void setup()
     }
 
     // scr->post(FIRMWARE_NAME);
-    add_repeating_timer_ms(39, displayUpdate, NULL, &timerDisplay);
-    add_repeating_timer_ms(10, touchUpdate, NULL, &timerTouch);
+    // add_repeating_timer_ms(39, displayUpdate, NULL, &timerDisplay);
+    // add_repeating_timer_ms(10, touchUpdate, NULL, &timerTouch);
 
     Serial.println("Finished initialising core 0.");
 }

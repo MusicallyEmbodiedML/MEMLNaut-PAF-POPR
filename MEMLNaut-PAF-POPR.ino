@@ -130,7 +130,7 @@ void setup()
     midi_interf->SetMIDISendChannel(1);
     Serial.println("MIDI setup complete.");
     if (midi_interf) {
-        midi_interf->SetNoteCallback([interface] (bool noteon, uint8_t note_number, uint8_t vel_value) {
+        midi_interf->SetNoteCallback([] (bool noteon, uint8_t note_number, uint8_t vel_value) {
         if (noteon) {
             uint8_t midimsg[2] = {note_number, vel_value };
             queue_try_add(&audio_app->qMIDINoteOn, &midimsg);
@@ -151,6 +151,7 @@ void setup()
     // scr->post(FIRMWARE_NAME);
     // add_repeating_timer_ms(39, displayUpdate, NULL, &timerDisplay);
     // add_repeating_timer_ms(10, touchUpdate, NULL, &timerTouch);
+    MEMLNaut::Instance()->addSystemInfoView();
 
     Serial.println("Finished initialising core 0.");
 }

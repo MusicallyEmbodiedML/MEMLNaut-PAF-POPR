@@ -1,7 +1,7 @@
 #include "PAFSynthAudioApp.hpp"
 #include "src/memllib/synth/maximilian.h" // Required for maxiSettings etc.
 
-#define ARPEGGIATOR
+// #define ARPEGGIATOR
 
 PAFSynthAudioApp::PAFSynthAudioApp() : AudioAppBase() {}
 
@@ -172,9 +172,9 @@ void PAFSynthAudioApp::ProcessParams(const std::vector<float>& params)
     // paf0_cf = arpFreq + (params[2] * params[2] * arpFreq * 1.f);
     // paf1_cf = arpFreq + (params[3] * params[3] * arpFreq * 1.f);
     // paf2_cf = arpFreq + (params[4] * params[4] * arpFreq * 1.f);
-    paf0_cf = (params[2] * params[2]  * 1.f);
-    paf1_cf = (params[3] * params[3]  * 1.f);
-    paf2_cf = (params[4] * params[4]  * 1.f);
+    paf0_cf = (params[2] * params[2]  * 2.f);
+    paf1_cf = (params[3] * params[3]  * 2.f);
+    paf2_cf = (params[4] * params[4]  * 2.f);
 
     // paf0_bw = 5.f + (params[5] * arpFreq * 0.5f);
     // paf1_bw = 5.f + (params[6] * arpFreq * 0.5f);
@@ -201,7 +201,7 @@ void PAFSynthAudioApp::ProcessParams(const std::vector<float>& params)
 
     euclidN = static_cast<size_t>(2 + (params[19] * 5));
     
-    envdec=((params[20] * 3.f) + 0.1f)/9000.f; // Decay rate for the envelope
+    envdec=((params[20] * 15.f) + 0.1f)/9000.f; // Decay rate for the envelope
 
 
     // Serial.printf("%f %f %f %f %f\n", paf0_cf,  paf0_bw, paf0_vib, paf0_vfr, paf0_shift);

@@ -115,36 +115,9 @@ void setup()
     interface->bindInterface();
     Serial.println("Bound RL interface to MEMLNaut.");
 
-    // // Create test views - now using string literals
-    // auto view1 = std::make_shared<TextView>("View 1", "Hello World!", TFT_RED);
-    // auto view2 = std::make_shared<TextView>("View 2", "Touch Me!", TFT_GREEN);
-    // auto view3 = std::make_shared<TextView>("View 3", "Last View", TFT_BLUE);
-    // auto msgView = std::make_shared<MessageView>("PAF Synth");
 
-    // disp = std::make_shared<DisplayDriver>();
-    // // Add views to display
-    // disp->AddView(view1);
-    // disp->AddView(view2);
-    // disp->AddView(view3);
-    // disp->AddView(msgView);
-    // disp->Setup();
-
-    // midi_interf = std::make_shared<MIDIInOut>();
-    midi_interf->Setup(0);
-    midi_interf->SetMIDISendChannel(1);
-    Serial.println("MIDI setup complete.");
-    if (midi_interf) {
-        midi_interf->SetNoteCallback([interface] (bool noteon, uint8_t note_number, uint8_t vel_value) {
-        if (noteon) {
-            uint8_t midimsg[2] = {note_number, vel_value };
-            queue_try_add(&audio_app->qMIDINoteOn, &midimsg);
-        }
-            Serial.printf("MIDI Note %d: %d\n", note_number, vel_value);
-        });
-        Serial.println("MIDI note callback set.");
-    }
-
-    midi_interf->Setup(0);
+    midi_interf = std::make_shared<MIDIInOut>();
+    midi_interf->Setup(PAFSynthAudioApp::kN_Params);
     midi_interf->SetMIDISendChannel(1);
     if (midi_interf) {
         // midiView->post("MIDI interface ready.");

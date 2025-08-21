@@ -1,6 +1,6 @@
 // #include "src/memllib/hardware/memlnaut/display/DisplayDriver.hpp"
 // #include "src/memllib/hardware/memlnaut/display/TextView.hpp"
-// #include "src/memllib/hardware/memlnaut/display/MessageView.hpp"
+#include "src/memllib/hardware/memlnaut/display/MessageView.hpp"
 #include "src/memllib/interface/MIDIInOut.hpp"
 // #include "src/memllib/hardware/memlnaut/display.hpp"
 #include "src/memllib/audio/AudioAppBase.hpp"
@@ -44,6 +44,7 @@ std::shared_ptr<PAFSynthAudioApp> __scratch_y("audio") audio_app;
 
 // std::shared_ptr<DisplayDriver> APP_SRAM disp;
 
+std::shared_ptr<MessageView> APP_SRAM midiView;
 
 // Inter-core communication
 volatile bool APP_SRAM core_0_ready = false;
@@ -74,13 +75,17 @@ constexpr size_t kN_InputParams = 3;
 //     disp->PollTouch();
 //     return true;
 // }
+// struct repeating_timer APP_SRAM timerMIDIIn;
+// inline bool __not_in_flash_func(MIDIPoll)(__unused struct repeating_timer *t) {
+//     midi_interf->Poll();
+//     return true;
+// }
+
 
 void setup()
 {
     set_sys_clock_khz(AudioDriver::GetSysClockSpeed(), true);
 
-    // scr = std::make_shared<display>();
-    // scr->setup();
     bus_ctrl_hw->priority = BUSCTRL_BUS_PRIORITY_DMA_W_BITS |
         BUSCTRL_BUS_PRIORITY_DMA_R_BITS | BUSCTRL_BUS_PRIORITY_PROC1_BITS;
 
@@ -88,7 +93,7 @@ void setup()
     srand(seed);
 
     Serial.begin(115200);
-    while (!Serial) {}
+        // while (!Serial) {}
     Serial.println("Serial initialised.");
     WRITE_VOLATILE(serial_ready, true);
 
@@ -148,9 +153,18 @@ void setup()
         delay(1);
     }
 
-    // scr->post(FIRMWARE_NAME);
-    // add_repeating_timer_ms(39, displayUpdate, NULL, &timerDisplay);
-    // add_repeating_timer_ms(10, touchUpdate, NULL, &timerTouch);
+    std::shared_ptr<MessageView> helpView = std::make_shared<MessageView>("Help");
+    helpView->post("PAF synth POPR");
+    helpView->post("TB: Up: Train, Down: Inference");
+    helpView->post("TA: Zoom On/Off");
+    helpView->post("MB: Up: Randomise in Training or Inference");
+    helpView->post("MB: Down: Clear Dataset");
+    helpView->post("Y: Zoom Factor");
+    helpView->post("Z: Training Iterations");
+    helpView->post("Joystick: Explore");
+    helpView->post("MIDI: Pitch and velocity");
+    MEMLNaut::Instance()->disp->AddView(helpView);
+    MEMLNaut::Instance()->addSystemInfoView();
 
     Serial.println("Finished initialising core 0.");
 }
@@ -170,7 +184,6 @@ void loop()
         // Un-blink LED
         digitalWrite(33, LOW);
     }
-    midi_interf->Poll();
     delay(10); // Add a small delay to avoid flooding the serial output
 }
 
@@ -185,6 +198,28 @@ void setup1()
         MEMORY_BARRIER();
         delay(1);
     }
+
+    midi_interf = std::make_shared<MIDIInOut>();
+    // midiView = std::make_shared<MessageView>("MIDI Monitor");
+    // midiView->setMaxLines(5);
+    // midiView->setLineWidth(100);
+    // MEMLNaut::Instance()->disp->AddView(midiView);
+
+    midi_interf->Setup(0);
+    midi_interf->SetMIDISendChannel(1);
+    if (midi_interf) {
+        // midiView->post("MIDI interface ready.");
+        midi_interf->SetNoteCallback([] (bool noteon, uint8_t note_number, uint8_t vel_value) {
+            if (noteon) {
+                uint8_t midimsg[2] = {note_number, vel_value };
+                queue_try_add(&audio_app->qMIDINoteOn, &midimsg);
+            }
+            // midiView->post("Note " + String(note_number) + ": " + String(vel_value));
+        });
+        // add_repeating_timer_ms(9, MIDIPoll, NULL, &timerMIDIIn);
+        // midiView->post("Listening on all channels");
+    }
+
 
 
     // Create audio app with memory barrier protection
@@ -209,10 +244,15 @@ void setup1()
     Serial.println("Finished initialising core 1.");
 }
 
+size_t midiCounter=0;
 void loop1()
 {
     // Audio app parameter processing loop
     audio_app->loop();
+    if(midiCounter++ == 5) {
+        midiCounter=0;
+        midi_interf->Poll();
+    }
     delay(1);
 }
 

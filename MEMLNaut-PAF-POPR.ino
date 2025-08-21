@@ -1,8 +1,6 @@
-// #include "src/memllib/hardware/memlnaut/display/DisplayDriver.hpp"
-// #include "src/memllib/hardware/memlnaut/display/TextView.hpp"
+#include "src/memllib/hardware/memlnaut/display/XYPadView.hpp"
 #include "src/memllib/hardware/memlnaut/display/MessageView.hpp"
 #include "src/memllib/interface/MIDIInOut.hpp"
-// #include "src/memllib/hardware/memlnaut/display.hpp"
 #include "src/memllib/audio/AudioAppBase.hpp"
 #include "src/memllib/audio/AudioDriver.hpp"
 #include "src/memllib/hardware/memlnaut/MEMLNaut.hpp"
@@ -45,6 +43,7 @@ std::shared_ptr<PAFSynthAudioApp> __scratch_y("audio") audio_app;
 // std::shared_ptr<DisplayDriver> APP_SRAM disp;
 
 std::shared_ptr<MessageView> APP_SRAM midiView;
+std::shared_ptr<XYPadView> APP_SRAM noteTrigView;
 
 // Inter-core communication
 volatile bool APP_SRAM core_0_ready = false;
@@ -116,14 +115,64 @@ void setup()
     interface->bindInterface();
     Serial.println("Bound RL interface to MEMLNaut.");
 
+    midi_interf = std::make_shared<MIDIInOut>();
+    // midiView = std::make_shared<MessageView>("MIDI Monitor");
+    // midiView->setMaxLines(5);
+    // midiView->setLineWidth(100);
+    // MEMLNaut::Instance()->disp->AddView(midiView);
 
-
+    midi_interf->Setup(0);
+    midi_interf->SetMIDISendChannel(1);
+    if (midi_interf) {
+        // midiView->post("MIDI interface ready.");
+        midi_interf->SetNoteCallback([] (bool noteon, uint8_t note_number, uint8_t vel_value) {
+            if (noteon) {
+                uint8_t midimsg[2] = {note_number, vel_value };
+                queue_try_add(&audio_app->qMIDINoteOn, &midimsg);
+            }
+            // midiView->post("Note " + String(note_number) + ": " + String(vel_value));
+        });
+        // add_repeating_timer_ms(9, MIDIPoll, NULL, &timerMIDIIn);
+        // midiView->post("Listening on all channels");
+    }
+    interface->SetMIDIInterface(midi_interf);
 
     WRITE_VOLATILE(core_0_ready, true);
     while (!READ_VOLATILE(core_1_ready)) {
         MEMORY_BARRIER();
         delay(1);
     }
+
+    noteTrigView = std::make_shared<XYPadView>("Play", TFT_SILVER);
+
+    // Cache MIDI notes being echoed
+    static bool is_playing_note = false;
+    static uint8_t last_note_number = 0;
+
+    noteTrigView->SetOnTouchCallback([](float x, float y) {
+        Serial.printf("Note trigger at: %.2f, %.2f\n", x, y);
+        if (audio_app) {
+            // If a note is already playing, stop it
+            if (is_playing_note) {
+                midi_interf->sendNoteOff(last_note_number, 0);
+                is_playing_note = false;
+            }
+            uint8_t midimsg[2] = {static_cast<uint8_t>(x * 127), static_cast<uint8_t>(y * 127)};
+            queue_try_add(&audio_app->qMIDINoteOn, &midimsg);
+            midi_interf->sendNoteOn(midimsg[0], midimsg[1]);
+            last_note_number = midimsg[0];
+            is_playing_note = true; // Set flag to indicate a note is playing
+        }
+    });
+    noteTrigView->SetOnTouchReleaseCallback([](float x, float y) {
+        Serial.printf("Note release at: %.2f, %.2f\n", x, y);
+        if (audio_app) {
+            midi_interf->sendNoteOff(last_note_number, 0);
+            is_playing_note = false; // Reset flag when note is released
+        }
+    });
+
+    MEMLNaut::Instance()->disp->AddView(noteTrigView);
 
     std::shared_ptr<MessageView> helpView = std::make_shared<MessageView>("Help");
     helpView->post("PAF synth POPR");
@@ -170,29 +219,6 @@ void setup1()
         MEMORY_BARRIER();
         delay(1);
     }
-
-    midi_interf = std::make_shared<MIDIInOut>();
-    // midiView = std::make_shared<MessageView>("MIDI Monitor");
-    // midiView->setMaxLines(5);
-    // midiView->setLineWidth(100);
-    // MEMLNaut::Instance()->disp->AddView(midiView);
-
-    midi_interf->Setup(0);
-    midi_interf->SetMIDISendChannel(1);
-    if (midi_interf) {
-        // midiView->post("MIDI interface ready.");
-        midi_interf->SetNoteCallback([] (bool noteon, uint8_t note_number, uint8_t vel_value) {
-            if (noteon) {
-                uint8_t midimsg[2] = {note_number, vel_value };
-                queue_try_add(&audio_app->qMIDINoteOn, &midimsg);
-            }
-            // midiView->post("Note " + String(note_number) + ": " + String(vel_value));
-        });
-        // add_repeating_timer_ms(9, MIDIPoll, NULL, &timerMIDIIn);
-        // midiView->post("Listening on all channels");
-    }
-
-
 
     // Create audio app with memory barrier protection
     {

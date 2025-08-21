@@ -96,14 +96,14 @@ void setup()
     MEMLNaut::Initialize();
     pinMode(33, OUTPUT);
 
-    
+
 
     auto temp_interface = std::make_shared<IMLInterface>();
     temp_interface->setup(kN_InputParams, PAFSynthAudioApp::kN_Params);
     MEMORY_BARRIER();
     interface = temp_interface;
     MEMORY_BARRIER();
-    
+
 
     // Setup interface with memory barrier protection
     WRITE_VOLATILE(interface_ready, true);
@@ -116,7 +116,7 @@ void setup()
     // auto view2 = std::make_shared<TextView>("View 2", "Touch Me!", TFT_GREEN);
     // auto view3 = std::make_shared<TextView>("View 3", "Last View", TFT_BLUE);
     // auto msgView = std::make_shared<MessageView>("PAF Synth");
-    
+
     // disp = std::make_shared<DisplayDriver>();
     // // Add views to display
     // disp->AddView(view1);
